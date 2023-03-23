@@ -12,7 +12,9 @@ namespace NekoLogger
         /// </summary>
         private LoggerOptions options;
 
-        private StreamWriter logWriter;
+        private StreamWriter? logWriter;
+
+        private List<LogLine> logBuffer;
 
 
         private static Dictionary<LogLevel, ConsoleColor> colors = new Dictionary<LogLevel, ConsoleColor>()
@@ -33,6 +35,8 @@ namespace NekoLogger
         /// </summary>
         public Logger(LoggerOptions? options = null)
         {
+            // Initialize Buffer
+            logBuffer = new List<LogLine>();
 
             // Check if LoggerOptions has been defined
             if (options == null)
@@ -61,6 +65,9 @@ namespace NekoLogger
                     this.options.consoleLogLevel = options.consoleLogLevel;
                 }
 
+                Info("Initializing Logger");
+
+                Trace("Parsing the fileLogLevel config");
                 // Check if fileloglevel is invaid
                 if (options.fileLogLevel == null || options.fileLogLevel.Value > LogLevel.ALL || options.fileLogLevel.Value < LogLevel.DISABLED)
                 {
@@ -72,6 +79,7 @@ namespace NekoLogger
                     this.options.fileLogLevel = options.fileLogLevel;
                 }
 
+                Trace("Parsing the log directory");
                 // Check if log directory is valid
                 if (options.logDirectory == null)
                 {
@@ -92,6 +100,7 @@ namespace NekoLogger
                 }
 
                 // Generate the log filename
+                Trace("Generating log filename");
                 string datenow = DateTime.Now + "";
                 datenow = datenow.Replace(" ", "_").Replace(":", "_").Replace(".", "_");
                 string logPath = datenow + ".log";
@@ -99,6 +108,7 @@ namespace NekoLogger
                 // Try to initiate a StreamWriter
                 try
                 {
+                    Debug("Creating new log file : " + logPath);
                     logWriter = new StreamWriter(this.options.logDirectory + @"\" + logPath);
                     logWriter.AutoFlush = true;
                 }
@@ -125,7 +135,8 @@ namespace NekoLogger
             }
 
             // Log the status about the initialization of the Logger
-            Info("Initializing NekoLogger with ConsoleLogLevel " + this.options.consoleLogLevel + " and FileLogLevel " + this.options.fileLogLevel);
+            Debug("Initializing NekoLogger with ConsoleLogLevel " + this.options.consoleLogLevel + " and FileLogLevel " + this.options.fileLogLevel);
+            Info("NekoLogger Initialized");
 
             if(this.options.fileLogLevel <= 0)
             {
@@ -138,6 +149,7 @@ namespace NekoLogger
             }
         }
 
+        // TRACE //
         /// <summary>
         /// Logs the message at the TRACE Log Level
         /// </summary>
@@ -148,6 +160,17 @@ namespace NekoLogger
         }
 
         /// <summary>
+        /// Logs the message together with an exception at the TRACE Log Level
+        /// </summary>
+        /// <param name="message">Message to Log</param>
+        /// <param name="e">Exception to Log</param>
+        public void Trace(string message, Exception e)
+        {
+            Log(LogLevel.TRACE, message + "\n" + e.Message + "\n" + e.StackTrace);
+        }
+
+        // DEBUG //
+        /// <summary>
         /// Logs the message at the DEBUG Log Level
         /// </summary>
         /// <param name="message">Message to Log</param>
@@ -156,6 +179,17 @@ namespace NekoLogger
             Log(LogLevel.DEBUG, message);
         }
 
+        /// <summary>
+        /// Logs the message together with an exception at the DEBUG Log Level
+        /// </summary>
+        /// <param name="message">Message to Log</param>
+        /// <param name="e">Exception to Log</param>
+        public void Debug(string message, Exception e)
+        {
+            Log(LogLevel.DEBUG, message + "\n" + e.Message + "\n" + e.StackTrace);
+        }
+
+        // INFO //
         /// <summary>
         /// Logs the message at the INFO Log Level
         /// </summary>
@@ -166,6 +200,17 @@ namespace NekoLogger
         }
 
         /// <summary>
+        /// Logs the message together with an exception at the INFO Log Level
+        /// </summary>
+        /// <param name="message">Message to Log</param>
+        /// <param name="e">Exception to Log</param>
+        public void Info(string message, Exception e)
+        {
+            Log(LogLevel.INFO, message + "\n" + e.Message + "\n" + e.StackTrace);
+        }
+
+        // NOTICE //
+        /// <summary>
         /// Logs the message at the NOTICE Log Level
         /// </summary>
         /// <param name="message">Message to Log</param>
@@ -174,6 +219,17 @@ namespace NekoLogger
             Log(LogLevel.NOTICE, message);
         }
 
+        /// <summary>
+        /// Logs the message together with an exception at the NOTICE Log Level
+        /// </summary>
+        /// <param name="message">Message to Log</param>
+        /// <param name="e">Exception to Log</param>
+        public void Notice(string message, Exception e)
+        {
+            Log(LogLevel.NOTICE, message + "\n" + e.Message + "\n" + e.StackTrace);
+        }
+
+        // WARN //
         /// <summary>
         /// Logs the message at the WARN Log Level
         /// </summary>
@@ -184,6 +240,17 @@ namespace NekoLogger
         }
 
         /// <summary>
+        /// Logs the message together with an exception at the WARN Log Level
+        /// </summary>
+        /// <param name="message">Message to Log</param>
+        /// <param name="e">Exception to Log</param>
+        public void Warn(string message, Exception e)
+        {
+            Log(LogLevel.WARN, message + "\n" + e.Message + "\n" + e.StackTrace);
+        }
+
+        // ERROR //
+        /// <summary>
         /// Logs the message at the ERROR Log Level
         /// </summary>
         /// <param name="message">Message to Log</param>
@@ -192,6 +259,17 @@ namespace NekoLogger
             Log(LogLevel.ERROR, message);
         }
 
+        /// <summary>
+        /// Logs the message together with an exception at the ERROR Log Level
+        /// </summary>
+        /// <param name="message">Message to Log</param>
+        /// <param name="e">Exception to Log</param>
+        public void Error(string message, Exception e)
+        {
+            Log(LogLevel.ERROR, message + "\n" + e.Message + "\n" + e.StackTrace);
+        }
+
+        // CRITICAL //
         /// <summary>
         /// Logs the message at the CRITICAL Log Level
         /// </summary>
@@ -202,6 +280,17 @@ namespace NekoLogger
         }
 
         /// <summary>
+        /// Logs the message together with an exception at the CRITICAL Log Level
+        /// </summary>
+        /// <param name="message">Message to Log</param>
+        /// <param name="e">Exception to Log</param>
+        public void Critical(string message, Exception e)
+        {
+            Log(LogLevel.CRITICAL, message + "\n" + e.Message + "\n" + e.StackTrace);
+        }
+
+        // FATAL //
+        /// <summary>
         /// Logs the message at the FATAL Log Level
         /// </summary>
         /// <param name="message">Message to Log</param>
@@ -210,7 +299,16 @@ namespace NekoLogger
             Log(LogLevel.FATAL, message);
         }
 
-        ///
+        /// <summary>
+        /// Logs the message together with an exception at the FATAL Log Level
+        /// </summary>
+        /// <param name="message">Message to Log</param>
+        /// <param name="e">Exception to Log</param>
+        public void Fatal(string message, Exception e)
+        {
+            Log(LogLevel.FATAL, message + "\n" + e.Message + "\n" + e.StackTrace);
+        }
+
         /// <summary>
         /// Logs the message at the specified log level
         /// </summary>
@@ -218,6 +316,20 @@ namespace NekoLogger
         /// <param name="message">Message to Log</param>
         public void Log(LogLevel logLevel, string message)
         {
+            if(logLevel <= LogLevel.DISABLED || logLevel >= LogLevel.ALL)
+            {
+                return;
+            }
+
+            if (logBuffer.Count > 0 && logWriter != null)
+            {
+                foreach (var item in logBuffer)
+                {
+                    _log(item.LogLevel, item.Message+"", true);
+                }
+                logBuffer.Clear();
+            }
+
             _log(logLevel, message);
         }
 
@@ -229,13 +341,26 @@ namespace NekoLogger
         /// <summary>
         /// Private Method which gets called by all the other log methods
         /// </summary>
-        private void _log(LogLevel logLevel, string message)
+        private void _log(LogLevel logLevel, string message, bool onlyFile = false)
         {
             timeNow = DateTime.Now;
             logLine = "[" + timeNow.Hour.ToString().PadLeft(2,'0') + ":" + timeNow.Minute.ToString().PadLeft(2, '0') + ":" + timeNow.Second.ToString().PadLeft(2, '0') + "] [" + logLevel.ToString() + "] " + message;
 
+            // Log to File
+            if(logLevel <= options.fileLogLevel || logWriter == null)
+            {
+                if(logWriter != null)
+                {
+                    logWriter.WriteLine(logLine);
+                }
+                else
+                {
+                    logBuffer.Add(new LogLine() { LogLevel = logLevel, Message = message });
+                }
+            }
+
             // Log to Console
-            if (logLevel <= options.consoleLogLevel)
+            if (logLevel <= options.consoleLogLevel && !onlyFile)
             {
                 // Store the Previous Color
                 previousColor = Console.ForegroundColor;
@@ -247,11 +372,6 @@ namespace NekoLogger
                 Console.ForegroundColor = previousColor;
             }
 
-            // Log to File
-            if(logLevel <= options.fileLogLevel)
-            {
-
-            }
         }
     }
 }
