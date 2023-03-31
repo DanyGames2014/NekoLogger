@@ -1,6 +1,4 @@
-﻿using System.Data;
-
-namespace NekoLogger
+﻿namespace NekoLogger
 {
     /// <summary>
     /// An instance of a Logger
@@ -15,6 +13,11 @@ namespace NekoLogger
         private StreamWriter? logWriter;
 
         private List<LogLine> logBuffer;
+
+        /// <summary>
+        /// Singleton instance of the logger
+        /// </summary>
+        private static Logger _instance;
 
 
         private static Dictionary<LogLevel, ConsoleColor> colors = new Dictionary<LogLevel, ConsoleColor>()
@@ -33,7 +36,7 @@ namespace NekoLogger
         /// <summary>
         /// Initializes a Logger Instance, if no logger options are specified, LoggerOptions.DEFAULT is used
         /// </summary>
-        public Logger(LoggerOptions? options = null)
+        private Logger(LoggerOptions? options = null)
         {
             // Initialize Buffer
             logBuffer = new List<LogLine>();
@@ -53,6 +56,7 @@ namespace NekoLogger
                 bool consoleAlert = false;
                 bool fileAlert = false;
                 bool logPathAlert = false;
+                bool bufferAlert = false;
 
                 // Check if consoleloglevel is invalid
                 if (options.consoleLogLevel == null || options.consoleLogLevel.Value > LogLevel.ALL || options.consoleLogLevel.Value < LogLevel.DISABLED)
@@ -83,7 +87,15 @@ namespace NekoLogger
                 // Check if log directory is valid
                 if (options.logDirectory == null)
                 {
-                    this.options.logDirectory = Directory.GetCurrentDirectory() + Path.DirectorySeparatorChar + "logs" + Path.DirectorySeparatorChar;
+                    try
+                    {
+                        this.options.logDirectory = Directory.GetCurrentDirectory() + Path.DirectorySeparatorChar + "logs" + Path.DirectorySeparatorChar;
+                    }
+                    catch (Exception e)
+                    {
+                        Error("Error when getting the running directory, file logging disabled", e);
+                        this.options.fileLogLevel = LogLevel.DISABLED;
+                    }
                     logPathAlert = true;
                 }
                 else
@@ -91,12 +103,39 @@ namespace NekoLogger
                     this.options.logDirectory = options.logDirectory;
                 }
 
+                Trace("Parsing buffer limit");
+                // Check if buffer limit has been specified
+                if (options.bufferLimit == 0)
+                {
+                    this.options.bufferLimit = 20;
+                    bufferAlert = true;
+                }
+                else
+                {
+                    this.options.bufferLimit = options.bufferLimit;
+                }
+
                 // Check if the logging directory exists, if not create it
                 Debug("Logging directory set to " + this.options.logDirectory);
-                if (!Directory.Exists(this.options.logDirectory))
+                try
                 {
-                    Debug("Log Directory didn't exist, creating");
-                    Directory.CreateDirectory(this.options.logDirectory);
+                    if (!Directory.Exists(this.options.logDirectory))
+                    {
+                        Debug("Log Directory didn't exist, creating");
+                        Directory.CreateDirectory(this.options.logDirectory + "");
+                    }
+                }
+                catch (PathTooLongException e)
+                {
+                    Error("Path to the logs folder is too long", e);
+                }
+                catch (DirectoryNotFoundException e)
+                {
+                    Error("The specified log directory not found", e);
+                }
+                catch (Exception e)
+                {
+                    Error("Error when creating the logs directory", e);
                 }
 
                 // Generate the log filename
@@ -128,9 +167,13 @@ namespace NekoLogger
                 {
                     Warn("FileLogLevel value is invalid, using the INFO level");
                 }
-                if(logPathAlert)
+                if (logPathAlert)
                 {
                     Warn("Logging Directory not specified, using the default logging path");
+                }
+                if (bufferAlert)
+                {
+                    Warn("Buffer Limit not specified, using 20 as the default");
                 }
             }
 
@@ -138,15 +181,39 @@ namespace NekoLogger
             Debug("Initializing NekoLogger with ConsoleLogLevel " + this.options.consoleLogLevel + " and FileLogLevel " + this.options.fileLogLevel);
             Info("NekoLogger Initialized");
 
-            if(this.options.fileLogLevel <= 0)
+            if (this.options.fileLogLevel <= 0)
             {
                 Info("File Logging is DISABLED");
             }
 
-            if(this.options.consoleLogLevel <= 0)
+            if (this.options.consoleLogLevel <= 0)
             {
                 Info("Console Logging is DISABLED");
             }
+        }
+
+        /// <summary>
+        /// Empty constructor to prevent the initialization of the Logger, this should not be called
+        /// </summary>
+        /// <exception cref="InvalidOperationException">Every time</exception>
+        private Logger()
+        {
+            throw new InvalidOperationException();
+        }
+
+        /// <summary>
+        /// Gets an Singleton instance of the Logger
+        /// </summary>
+        /// <param name="options">Logging options to use</param>
+        /// <returns>Singleton logger instance</returns>
+        public static Logger GetLogger(LoggerOptions? options = null)
+        {
+            if(_instance == null)
+            {
+                _instance = new Logger(options);
+            }
+
+            return _instance;
         }
 
         // TRACE //
@@ -321,14 +388,36 @@ namespace NekoLogger
                 return;
             }
 
-            if (logBuffer.Count > 0 && logWriter != null)
+            try
             {
-                foreach (var item in logBuffer)
+                if (logBuffer.Count > 0 && logWriter != null)
                 {
-                    _log(item.LogLevel, item.Message+"", true);
+                    if (logBuffer.Count > options.bufferLimit)
+                    {
+                        logBuffer.Clear();
+                        options.fileLogLevel = LogLevel.DISABLED;
+                        Warn("Writing logs to file failed, disabling file logging");
+                    }
+                    else
+                    {
+                        if (logWriter != null)
+                        {
+                            foreach (var item in logBuffer)
+                            {
+                                _log(item.LogLevel, item.Message + "", true);
+                            }
+                            logBuffer.Clear();
+                        }
+                    }
+
                 }
-                logBuffer.Clear();
             }
+            catch (Exception e)
+            {
+                Error("Error when writing the log buffer to file, file logging disabled", e);
+                options.fileLogLevel = LogLevel.DISABLED;
+            }
+            
 
             _log(logLevel, message);
         }
@@ -349,13 +438,21 @@ namespace NekoLogger
             // Log to File
             if(logLevel <= options.fileLogLevel || logWriter == null)
             {
-                if(logWriter != null)
+                try
                 {
-                    logWriter.WriteLine(logLine);
+                    if (logWriter != null)
+                    {
+                        logWriter.WriteLine(logLine);
+                    }
+                    else
+                    {
+                        logBuffer.Add(new LogLine() { LogLevel = logLevel, Message = message });
+                    }
                 }
-                else
+                catch (Exception e)
                 {
-                    logBuffer.Add(new LogLine() { LogLevel = logLevel, Message = message });
+                    Error("Error when writing log to file",e);
+                    options.fileLogLevel = LogLevel.DISABLED;
                 }
             }
 

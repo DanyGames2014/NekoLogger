@@ -1,11 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace NekoLogger
+﻿namespace NekoLogger
 {
     /// <summary>
     /// Represents options to create a Logger with
@@ -28,6 +21,11 @@ namespace NekoLogger
         public string? logDirectory;
 
         /// <summary>
+        /// Limits the amount of messages that can be stored in a buffer
+        /// </summary>
+        public int bufferLimit;
+
+        /// <summary>
         /// Initializes a new instnace of LoggerOptions, use object initializer to initialize
         /// </summary>
         public LoggerOptions() {}
@@ -39,7 +37,8 @@ namespace NekoLogger
         {
             consoleLogLevel = LogLevel.INFO,
             fileLogLevel = LogLevel.INFO,
-            logDirectory = Directory.GetCurrentDirectory() + Path.DirectorySeparatorChar + "logs" + Path.DirectorySeparatorChar
+            logDirectory = Directory.GetCurrentDirectory() + Path.DirectorySeparatorChar + "logs" + Path.DirectorySeparatorChar,
+            bufferLimit = 50
         };
     }
 }
