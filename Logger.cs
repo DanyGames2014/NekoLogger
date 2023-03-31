@@ -17,7 +17,7 @@
         /// <summary>
         /// Singleton instance of the logger
         /// </summary>
-        private static Logger _instance;
+        private static Logger? _instance;
 
 
         private static Dictionary<LogLevel, ConsoleColor> colors = new Dictionary<LogLevel, ConsoleColor>()
